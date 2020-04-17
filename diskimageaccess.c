@@ -13,7 +13,7 @@
 #include "pathname.h"
 #include "chksumfile.h"
 
-int quietFlag = 0; 
+int quietFlag = 0;
 int idumpFlag = 0;
 int pdumpFlag = 0;
 
@@ -36,9 +36,9 @@ int main(int argc, char *argv[]) {
     case 'p':
       pdumpFlag = 1;
       break;
-    default: 
+    default:
       PrintUsageAndExit(argv[0]);
-    } 
+    }
   }
 
   if (optind != argc-1) {
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  if (!quietFlag) {  
+  if (!quietFlag) {
     int disksize = diskimg_getsize(fd);
     if (disksize < 0) {
       fprintf(stderr, "Error getting the size of %s\n", argv[1]);
@@ -99,6 +99,7 @@ static void DumpInodeChecksum(struct unixfilesystem *fs, FILE *f) {
       fprintf(stderr,"Can't read inode %d \n", inumber);
       return;
     }
+
     if ((in.i_mode & IALLOC) == 0) {
       // Skip this inode if it's not allocated.
       continue;
@@ -131,6 +132,7 @@ static void DumpPathAndChildren(struct unixfilesystem *fs, const char *pathname,
     fprintf(stderr,"Can't read inode %d \n", inumber);
     return;
   }
+
   assert(in.i_mode & IALLOC);
 
   char chksum1[CHKSUMFILE_SIZE];
@@ -160,27 +162,27 @@ static void DumpPathAndChildren(struct unixfilesystem *fs, const char *pathname,
     pathname++; /* Delete extra / character */
   }
 
-  if ((in.i_mode & IFMT) == IFDIR) { 
-      const unsigned int MAXPATH = 1024;
-      if (strlen(pathname) > MAXPATH-16) {
-        fprintf(stderr, "Too deep of directories %s\n", pathname);
+  if ((in.i_mode & IFMT) == IFDIR) {
+    const unsigned int MAXPATH = 1024;
+    if (strlen(pathname) > MAXPATH-16) {
+      fprintf(stderr, "Too deep of directories %s\n", pathname);
+    }
+
+    struct direntv6 direntries[10000];
+    int numentries = GetDirEntries(fs, inumber, direntries, 10000);
+    for (int i = 0; i < numentries; i++) {
+      char *n =  direntries[i].d_name;
+      if (n[0] == '.') {
+	if ((n[1] == 0) || ((n[1] == '.') && (n[2] == 0))) {
+	  /* Skip over "." and ".." */
+	  continue;
+	}
       }
 
-      struct direntv6 direntries[10000];
-      int numentries = GetDirEntries(fs, inumber, direntries, 10000);
-      for (int i = 0; i < numentries; i++) {
-        char *n =  direntries[i].d_name;
-        if (n[0] == '.') {
-          if ((n[1] == 0) || ((n[1] == '.') && (n[2] == 0))) {
-            /* Skip over "." and ".." */
-            continue;
-          }
-        }
-
-        char nextpath[MAXPATH];
-        sprintf(nextpath, "%s/%s",pathname, direntries[i].d_name);
-        DumpPathAndChildren(fs, nextpath,  direntries[i].d_inumber, f);
-      }
+      char nextpath[MAXPATH];
+      sprintf(nextpath, "%s/%s",pathname, direntries[i].d_name);
+      DumpPathAndChildren(fs, nextpath,  direntries[i].d_inumber, f);
+    }
   }
 }
 
@@ -209,8 +211,8 @@ static void PrintDirectory(struct unixfilesystem *fs,  char *pathname) {
     fprintf(stderr, "Can't read entries from %s\n", pathname);
     return;
   }
-  
-  for (int i = 0; i < numentries; i++) { 
+
+  for (int i = 0; i < numentries; i++) {
     printf("Direntry %s Name %s Inumber %d\n", pathname, direntries[i].d_name, direntries[i].d_inumber);
   }
 }
@@ -223,7 +225,7 @@ static int GetDirEntries(struct unixfilesystem *fs, int inumber, struct direntv6
   struct inode in;
   int err = inode_iget(fs, inumber, &in);
   if (err < 0) return err;
-  
+
   if (!(in.i_mode & IALLOC) || ((in.i_mode & IFMT) != IFDIR)) {
     /* Not allocated or not a directory */
     return -1;
@@ -245,8 +247,8 @@ static int GetDirEntries(struct unixfilesystem *fs, int inumber, struct direntv6
       fprintf(stderr, "Error reading directory\n");
       return -1;
     }
-    numEntriesInBlock = bytesLeft/sizeof(struct direntv6); 
-    for (i = 0; i <  numEntriesInBlock ; i++) { 
+    numEntriesInBlock = bytesLeft/sizeof(struct direntv6);
+    for (i = 0; i <  numEntriesInBlock ; i++) {
       entries[count] = dir[i];
       count++;
       if (count >= maxNumEntries) return count;
@@ -259,8 +261,8 @@ static int GetDirEntries(struct unixfilesystem *fs, int inumber, struct direntv6
 static void PrintUsageAndExit(char *progname) {
   fprintf(stderr, "Usage: %s <options> diskimagePath\n", progname);
   fprintf(stderr, "where <options> can be:\n");
-  fprintf(stderr, "-q     don't print extra info\n"); 
-  fprintf(stderr, "-i     print all inode checksums\n"); 
-  fprintf(stderr, "-p     print all pathname checksums\n");  
+  fprintf(stderr, "-q     don't print extra info\n");
+  fprintf(stderr, "-i     print all inode checksums\n");
+  fprintf(stderr, "-p     print all pathname checksums\n");
   exit(EXIT_FAILURE);
 }
